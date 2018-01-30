@@ -135,10 +135,10 @@ def _gen_lookup_dirs():
 def _read_file_config():
     global _config_file_detected, _sections
 
-    if _env is not None:
+    if _env is not None and _env.lower() in ['development', 'testing', 'production']:
         config_file_name = 'config.{}.ini'.format(_env.lower())
     else:
-        config_file_name = 'config.ini'
+        config_file_name = 'config.development.ini'
 
     file_list = [os.path.join(x, config_file_name) for x in _gen_lookup_dirs()]
 
@@ -154,8 +154,7 @@ def _read_file_config():
     if not config_flag:
         _config_file_detected = None
         _sections = {}
-
-        # logger.info('No configuration file found. Looked for: {}'.format(', '.join(file_list)))
+        logger.info('No configuration file found. Looked for: {}'.format(', '.join(file_list)))
 
 
 def read_env():
