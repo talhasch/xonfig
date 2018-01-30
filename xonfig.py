@@ -46,6 +46,7 @@ def init():
     global _config, _sections, _env, _config_dir, _config_file_detected
 
     _config = config_parser.ConfigParser(interpolation=Interpolation())
+    _config.optionxform = str
     _sections = {}
     _env = None
     _config_dir = None

@@ -122,7 +122,12 @@ class Test2(unittest.TestCase):
         self.assertEqual(get_option('APP', 'SQLALCHEMY_POOL_SIZE'), 100)
         self.assertEqual(get_option('APP', 'X_RATE'), 1.23)
 
-    def test_07_get_config(self):
+    def test_07_get_option_by_dict(self):
+        # Get option directly from dictionary
+        self.assertEqual(get_section('APP')['DEVELOPMENT'], True)
+        self.assertEqual(get_section('APP')['SECRET_KEY'], 'VERY-SECRET-K3Y')
+
+    def test_08_get_option(self):
         # Should be raise NoOptionError
         with self.assertRaises(NoOptionError):
             self.assertEqual(get_option('APP', 'DEBUG1'), True)
