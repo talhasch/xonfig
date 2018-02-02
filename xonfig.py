@@ -8,8 +8,8 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-__all__ = ['get_option', 'get_section', 'get_sections', 'get_config', 'get_env', 'get_config_file_detected',
-           'set_config_dir', 'refresh', 'read_env']
+__all__ = ['get_option', 'get_section', 'get_sections', 'get_config', 'get_env', 'get_config_files_detected',
+           'set_config_dir']
 
 
 def _literal_eval(val):
@@ -19,7 +19,7 @@ def _literal_eval(val):
         return val
 
 
-class Interpolation:
+class _Interpolation:
     """Interpolation class to parse/modify option values"""
 
     def before_get(self, parser, section, option, value, defaults):
@@ -35,33 +35,12 @@ class Interpolation:
         return value
 
 
-_config = None
-_sections = None
+_config = config_parser.ConfigParser(interpolation=_Interpolation())
+_config.optionxform = str
+_sections = {}
 _env = None
 _config_dir = None
-_config_file_detected = None
-
-
-def init():
-    global _config, _sections, _env, _config_dir, _config_file_detected
-
-    _config = config_parser.ConfigParser(interpolation=Interpolation())
-    _config.optionxform = str
-    _sections = {}
-    _env = None
-    _config_dir = None
-    _config_file_detected = None
-
-    _detect_env()
-    _read_file_config()
-    read_env()
-
-
-def refresh():
-    """
-    An alias for init()
-    """
-    init()
+_config_files_detected = []
 
 
 def get_config():
@@ -79,9 +58,12 @@ def get_sections():
 
 
 def _detect_env():
+    """
+    Detects environment
+    """
     global _env
     if os.environ.get('__ENV__', None) is not None:
-        _env = os.environ.get('__ENV__')
+        _env = os.environ.get('__ENV__').lower()
 
 
 def get_env():
@@ -95,71 +77,101 @@ def set_config_dir(d):
     """
     Setter for _config_dir
     """
-    global _config_dir
+    global _config_dir, _config_files_detected, _sections
 
     _config_dir = d
 
-    _read_file_config()
+    _config_files_detected = []
+    _sections = {}
+
+    _read_file_config_main()
+    _read_file_config_env()
+    _read_env()
 
 
 def get_config_dir():
+    """
+    Getter for _config_dir
+    """
     return _config_dir
 
 
-def get_config_file_detected():
+def get_config_files_detected():
     """
-    Getter for _config_file_detected
+    Getter for _config_files_detected
     """
-    return _config_file_detected
+    return _config_files_detected
 
 
 def _gen_lookup_dirs():
-    # Add some probaly paths
+    """
+    Generates directories to search configuration files
+    """
 
-    # Script's dir
-    dirs = [os.path.abspath(os.getcwd())]
-
-    # Script's parent dir
-    dirs += [os.path.abspath(os.path.join(os.getcwd(), '..'))]
-
-    # Script's 2.parent dir
-    dirs += [os.path.abspath(os.path.join(os.getcwd(), '..', '..'))]
-
-    # If _config_dir specified by users, add it to beginning of list
+    # If _config_dir specified by user, only searches in that dir
     if _config_dir is not None:
-        dirs = [_config_dir] + dirs
+        dirs = [_config_dir]
+    else:
+        # Caller script's dir
+        dirs = [os.path.abspath(os.getcwd())]
+
+        # Caller script's parent dir
+        dirs += [os.path.abspath(os.path.join(os.getcwd(), '..'))]
+
+        # Caller script's 2. parent dir
+        dirs += [os.path.abspath(os.path.join(os.getcwd(), '..', '..'))]
 
     return dirs
 
 
-def _read_file_config():
-    global _config_file_detected, _sections
+def _read_file_config_main():
+    """
+    Reads options from default config file config.ini
+    Config.ini should contain the most basic configuration file
+    """
+    global _config_files_detected, _sections
 
-    if _env is not None and _env.lower() in ['development', 'testing', 'production']:
-        config_file_name = 'config.{}.ini'.format(_env.lower())
-    else:
-        config_file_name = 'config.development.ini'
-
-    file_list = [os.path.join(x, config_file_name) for x in _gen_lookup_dirs()]
+    file_list = [os.path.join(x, 'config.ini') for x in _gen_lookup_dirs()]
 
     config_flag = False
     for file in file_list:
         if os.path.isfile(file):
             _config.read(file)
-            _config_file_detected = file
+            _config_files_detected.append(file)
             _sections = {s: dict(_config.items(s)) for s in _config.sections()}
             config_flag = True
             break
 
     if not config_flag:
-        _config_file_detected = None
-        _sections = {}
         logger.info('No configuration file found. Looked for: {}'.format(', '.join(file_list)))
 
 
-def read_env():
+def _read_file_config_env():
     """
-    Environment variable definition example:
+    Reads options from config file according to detected environment.
+    """
+    global _config_files_detected, _sections
+
+    if _env is not None and _env.lower() in ['testing', 'production']:
+        config_file_name = 'config.{}.ini'.format(_env)
+    else:
+        config_file_name = 'config.development.ini'
+
+    file_list = [os.path.join(x, config_file_name) for x in _gen_lookup_dirs()]
+
+    for file in file_list:
+        if os.path.isfile(file):
+            _config.read(file)
+            _config_files_detected.append(file)
+            _sections = {s: dict(_config.items(s)) for s in _config.sections()}
+            break
+
+
+def _read_env():
+    """
+    Reads options from environment variables.
+
+    Definition example:
 
     __ENV__APP_SQLALCHEMY_DATABASE_URI =>  [__ENV__]   [APP]   [SQLALCHEMY_DATABASE_URI]
                                                ↓         ↓                ↓
@@ -191,11 +203,20 @@ def read_env():
 
 
 def get_option(section, option):
+    """
+    Returns option value by section name and option name
+    """
     return _config.get(section, option)
 
 
 def get_section(section):
+    """
+    Returns section dictionary by section name
+    """
     return _sections[section]
 
 
-init()
+_detect_env()
+_read_file_config_main()
+_read_file_config_env()
+_read_env()
