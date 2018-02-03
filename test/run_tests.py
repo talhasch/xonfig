@@ -4,6 +4,8 @@ import os
 import sys
 from subprocess import Popen, PIPE
 
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
 this_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 interpreter_path = os.path.abspath(sys.executable)
 python_path = os.path.abspath(os.path.join(this_dir, '..'))

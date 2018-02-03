@@ -12,8 +12,8 @@ class Py3RequiredError(Exception):
         super(Py3RequiredError, self).__init__(message)
 
 
-if sys.version_info[0] != 3:
-    raise Py3RequiredError("Python 3 Required!")
+if sys.version_info < (3, 2):
+    raise Py3RequiredError("Minimum python 3.2 required!")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
