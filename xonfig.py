@@ -4,6 +4,16 @@ import ast
 import configparser as config_parser
 import logging
 import os
+import sys
+
+
+class Py3RequiredError(Exception):
+    def __init__(self, message):
+        super(Py3RequiredError, self).__init__(message)
+
+
+if sys.version_info[0] != 3:
+    raise Py3RequiredError("Python 3 Required!")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

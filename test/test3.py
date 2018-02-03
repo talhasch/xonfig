@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 Test with config.ini and config.development.ini files. Simulating development environment.
 """

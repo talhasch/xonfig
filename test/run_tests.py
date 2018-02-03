@@ -151,4 +151,4 @@ for item in test_list:
 
     i += 1
 
-print("All tests passed")
+print("All tests passed!")

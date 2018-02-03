@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 Test with only config.ini file.
 """
